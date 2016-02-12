@@ -2,17 +2,11 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <AnalogGyro.h>
+#include <iostream>
 
-/**
- * This sample program shows how to control a motor using a joystick. In the operator
- * control part of the program, the joystick is read and the value is written to the motor.
- *
- * Joystick analog values range from -1 to 1 and speed controller inputs as range from
- * -1 to 1 making it easy to work together. The program also delays a short time in the loop
- * to allow other threads to run. This is generally a good idea, especially since the joystick
- * values are only transmitted from the Driver Station once every 20ms.
- */
-class Robot : public SampleRobot {
+class Robot : public SampleRobot
+{
+	public:std::shared_ptr<NetworkTable> table;
 	Joystick m_stick;
 	Joystick m_stick1;
 	Joystick m_stick2;
@@ -28,31 +22,22 @@ class Robot : public SampleRobot {
 	int counter;
 	int timer1;
 	bool autoDriveMode;
-	// The motor to control with the Joystick.
-	// This uses a Talon speed controller; use the Victor or Jaguar classes for
-	//   other speed controllers.
 	Talon MLeft1;
 	Talon MLeft2;
 	Talon MRight1;
 	Talon MRight2;
 	Talon ShooterL;
 	Talon ShooterR;
+	Talon AngleModulator;
 	timeval tm;
 	timeval tm_last;
-		// Solenoids to control with the joystick.
-		// Solenoid corresponds to a single solenoid.
-		Solenoid m_solenoid;
-		// DoubleSolenoid corresponds to a double solenoid.
-		DoubleSolenoid m_doubleSolenoid;
-		// Update every 5milliseconds/0.005 seconds.
-		const double kUpdatePeriod = 0.005;
-
-		// Numbers of the buttons to use for triggering the solenoids.
-		const int kSolenoidButton = 1;
-		const int kDoubleSolenoidForward = 2;
-		const int kDoubleSolenoidReverse = 3;
-		Compressor  *compressor;
-
+	Solenoid m_solenoid;
+	DoubleSolenoid m_doubleSolenoid;
+	const double kUpdatePeriod = 0.005;
+	const int kSolenoidButton = 1;
+	const int kDoubleSolenoidForward = 2;
+	const int kDoubleSolenoidReverse = 3;
+	Compressor  *compressor;
 	void turtleMode()
 	{
 		MLeft1.Set(m_stick.GetY()*-0.285);
@@ -200,6 +185,7 @@ public:
 			MRight2(3),// Initialize the Talon on channel 0.
 			ShooterL(4),
 			ShooterR(5),
+			AngleModulator(6),
 			gyro(0),
 			m_solenoid(0), // Use solenoid on channel 0.
 			// Use double solenoid with Forward Channel of 1 and Reverse of 2.
@@ -208,6 +194,7 @@ public:
 	}
 	void RobotInit()
 		{
+			table = NetworkTable::GetTable("/GRIP/shit");
 			compressor=new Compressor(0);
 			compressor->SetClosedLoopControl(true);
 			Sol = 0.5;
@@ -259,6 +246,13 @@ public:
 	void OperatorControl() {
 		printf("teleop\n");
 		while (IsOperatorControl() && IsEnabled()) {
+			printf("Areas: ");
+			std::vector<double> arr = table->GetNumberArray("area", llvm::ArrayRef<double>());
+			for (unsigned int i = 0; i < arr.size(); i++)
+			{
+				std::cout << arr[i] << " ";
+			}
+			std::cout << std::endl;
 			timerprocessor();
 			if(timer1 == 0)
 			{
@@ -327,8 +321,9 @@ public:
 				{
 					allStop();
 				}
-				ShooterL.Set(m_stick.GetY());
-				ShooterR.Set(m_stick.GetY()*-1);
+				ShooterL.Set(m_stick.GetThrottle());
+				ShooterR.Set(m_stick.GetThrottle()*-1);
+				AngleModulator.Set(m_stick1.GetY());
 			}
 			else
 			{
@@ -343,28 +338,25 @@ public:
 					MLeft2.Set(m_stick.GetY()*Sol*-1);
 					MRight1.Set(m_stick.GetThrottle()*Sor);
 					MRight2.Set(m_stick.GetThrottle()*Sor);
-					if(m_stick.GetRawButton(3))
+					AngleModulator.Set(m_stick1.GetY());
+					if (m_stick.GetRawButton(kDoubleSolenoidForward))
 					{
-						printf("damn\n");
-						printf("%f\n",gyro.GetAngle());
+						m_doubleSolenoid.Set(DoubleSolenoid::kForward);
+					    printf("fuck\n");
 					}
+					else if (m_stick.GetRawButton(kDoubleSolenoidReverse))
+					{
+						m_doubleSolenoid.Set(DoubleSolenoid::kReverse);
+						printf("shit\n");
+					}
+					else
+					{
+						m_doubleSolenoid.Set(DoubleSolenoid::kOff);
+						Wait(kUpdatePeriod); // Wait 5ms for the next update.
+					}
+
 				}
-		}
-			/*	if (m_stick.GetRawButton(kDoubleSolenoidForward))
-				{
-					m_doubleSolenoid.Set(DoubleSolenoid::kForward);
-				    printf("fuck\n");
-				}
-				else if (m_stick.GetRawButton(kDoubleSolenoidReverse))
-				{
-					m_doubleSolenoid.Set(DoubleSolenoid::kReverse);
-					printf("shit\n");
-				}
-				else
-				{
-					m_doubleSolenoid.Set(DoubleSolenoid::kOff);
-					Wait(kUpdatePeriod); // Wait 5ms for the next update.
-				}*/
+			}
 		}
 	}
 };
