@@ -3,13 +3,12 @@
 #include <sys/time.h>
 #include <AnalogGyro.h>
 #include <iostream>
+#include <math.h>
 
 class Robot : public SampleRobot
 {
 	public:std::shared_ptr<NetworkTable> table;
-	Joystick m_stick;
-	Joystick m_stick1;
-	Joystick m_stick2;
+	Joystick m_stick;           	//
 	AnalogGyro gyro;
 	DigitalInput di;
 	float Sol;
@@ -61,6 +60,7 @@ class Robot : public SampleRobot
 					max_i    = i;
 				}
 			}
+			float s = fabs(centerYs[i] - 240) * 0.003;
 			if(centerXs[i] > 321)
 			{
 				MLeft1.Set(0.285);
@@ -85,10 +85,10 @@ class Robot : public SampleRobot
 				AngleModulator.Set(1);
 			}else if(centerYs[i] < 239)
 			{
-				AngleModulator.Set(-1);
+				AngleModulator.Set(-0.2 - s);
 			}else
 			{
-				AngleModulator.Set(0);
+				AngleModulator.Set(0.2 + s);
 			}
 		}
 	}
@@ -231,8 +231,6 @@ class Robot : public SampleRobot
 public:
 	Robot() :
 		    m_stick(0),
-			m_stick1(1),
-			m_stick2(2),// Initialize Joystick on port 0.
 			MLeft1(0),
 			MLeft2(1),
 			MRight1(2),
@@ -384,7 +382,6 @@ public:
 				}
 				ShooterL.Set(m_stick.GetThrottle());
 				ShooterR.Set(m_stick.GetThrottle()*-1);
-				AngleModulator.Set(m_stick1.GetY());
 			}
 			else
 			{
@@ -399,7 +396,6 @@ public:
 					MLeft2.Set(m_stick.GetY()*Sol*-1);
 					MRight1.Set(m_stick.GetThrottle()*Sor);
 					MRight2.Set(m_stick.GetThrottle()*Sor);
-					AngleModulator.Set(m_stick1.GetY());
 					if (m_stick.GetRawButton(kDoubleSolenoidForward))
 					{
 						m_doubleSolenoid.Set(DoubleSolenoid::kForward);
