@@ -11,15 +11,17 @@ class Robot : public SampleRobot
 	Joystick m_stick1;
 	Joystick m_stick2;
 	AnalogGyro gyro;
+	DigitalInput di;
 	float Sol;
 	float Sor;
 	bool Sob12;
+	bool Sob2;
+	bool Sob4;
 	bool Sob5;
 	bool Sob6;
 	bool Sob7;
 	bool Sob8;
 	bool sob11;
-	int counter;
 	int timer1;
 	bool autoDriveMode;
 	Talon MLeft1;
@@ -38,6 +40,58 @@ class Robot : public SampleRobot
 	const int kDoubleSolenoidForward = 2;
 	const int kDoubleSolenoidReverse = 3;
 	Compressor  *compressor;
+	void autoTargeting()
+	{
+		std::vector<double> areas = table->GetNumberArray("area", llvm::ArrayRef<double>());
+		std::vector<double> centerXs = table->GetNumberArray("centerX", llvm::ArrayRef<double>());
+		std::vector<double> centerYs = table->GetNumberArray("centerY", llvm::ArrayRef<double>());
+		int max_i = -1;
+		int i;
+		double max_area = -1;
+		if(areas.size() < 1)
+		{
+			turnRight();
+		}
+		else
+		{
+			for (i = 0; i < areas.size(); i++)
+			{
+				if (areas[i] > max_area) {
+					max_area = areas[i];
+					max_i    = i;
+				}
+			}
+			if(centerXs[i] > 321)
+			{
+				MLeft1.Set(0.285);
+				MLeft2.Set(0.285);
+				MRight1.Set(-0.285);
+				MRight2.Set(-0.285);
+			} else if(centerXs[i < 319])
+			{
+				MLeft1.Set(-0.285);
+				MLeft2.Set(-0.285);
+				MRight1.Set(0.285);
+				MRight2.Set(0.285);
+			} else
+			{
+				MLeft1.Set(0);
+				MLeft2.Set(0);
+				MRight1.Set(0);
+				MRight2.Set(0);
+			}
+			if(centerYs[i] > 241)
+			{
+				AngleModulator.Set(1);
+			}else if(centerYs[i] < 239)
+			{
+				AngleModulator.Set(-1);
+			}else
+			{
+				AngleModulator.Set(0);
+			}
+		}
+	}
 	void turtleMode()
 	{
 		MLeft1.Set(m_stick.GetY()*-0.285);
@@ -189,7 +243,8 @@ public:
 			gyro(0),
 			m_solenoid(0), // Use solenoid on channel 0.
 			// Use double solenoid with Forward Channel of 1 and Reverse of 2.
-			m_doubleSolenoid(1, 2)
+			m_doubleSolenoid(1, 2),
+			di(0)
 	{
 	}
 	void RobotInit()
@@ -200,7 +255,8 @@ public:
 			Sol = 0.5;
 			Sor = 0.5;
 			autoDriveMode = false;
-			counter = 0;
+			Sob2 = false;
+			Sob4 = false;
 			Sob5 = false;
 			Sob6 = false;
 			Sob7 = false;
@@ -246,13 +302,6 @@ public:
 	void OperatorControl() {
 		printf("teleop\n");
 		while (IsOperatorControl() && IsEnabled()) {
-			printf("Areas: ");
-			std::vector<double> arr = table->GetNumberArray("area", llvm::ArrayRef<double>());
-			for (unsigned int i = 0; i < arr.size(); i++)
-			{
-				std::cout << arr[i] << " ";
-			}
-			std::cout << std::endl;
 			timerprocessor();
 			if(timer1 == 0)
 			{
@@ -273,9 +322,21 @@ public:
 			if(autoDriveMode)
 			{
 				speedControl();
-				if(m_stick.GetRawButton(9))
+				if(Sob4 != m_stick.GetRawButton(4))
 				{
-					gyro.Reset();
+					Sob4 = !Sob4;
+					if(Sob4)
+					{
+						gyro.Reset();
+					}
+				}
+				if(Sob2 != m_stick.GetRawButton(2))
+				{
+					Sob2 = !Sob2;
+					if(Sob2)
+					{
+						gyro.Reset();
+					}
 				}
 				if(m_stick.GetRawButton(4))
 				{
@@ -342,19 +403,22 @@ public:
 					if (m_stick.GetRawButton(kDoubleSolenoidForward))
 					{
 						m_doubleSolenoid.Set(DoubleSolenoid::kForward);
-					    printf("fuck\n");
+					    //printf("fuck\n");
 					}
 					else if (m_stick.GetRawButton(kDoubleSolenoidReverse))
 					{
 						m_doubleSolenoid.Set(DoubleSolenoid::kReverse);
-						printf("shit\n");
+						//printf("shit\n");
 					}
 					else
 					{
 						m_doubleSolenoid.Set(DoubleSolenoid::kOff);
 						Wait(kUpdatePeriod); // Wait 5ms for the next update.
 					}
-
+					if (m_stick.GetRawButton(3))
+					{
+						autoTargeting();
+					}
 				}
 			}
 		}
