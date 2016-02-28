@@ -1,14 +1,15 @@
+#include <unistd.h>
 #include "WPILib.h"
 #include <stdio.h>
 #include <sys/time.h>
 #include <AnalogGyro.h>
 #include <iostream>
 #include <math.h>
-
 class Robot : public SampleRobot
 {
 	public:std::shared_ptr<NetworkTable> table;
-	Joystick m_stick;           	//
+	Joystick m_stick;
+	Joystick m_stick1;
 	AnalogGyro gyro;
 	DigitalInput di;
 	float Sol;
@@ -21,6 +22,7 @@ class Robot : public SampleRobot
 	bool Sob7;
 	bool Sob8;
 	bool sob11;
+	bool sos;
 	int timer1;
 	bool autoDriveMode;
 	Talon MLeft1;
@@ -35,9 +37,9 @@ class Robot : public SampleRobot
 	Solenoid m_solenoid;
 	DoubleSolenoid m_doubleSolenoid;
 	const double kUpdatePeriod = 0.005;
-	const int kSolenoidButton = 1;
-	const int kDoubleSolenoidForward = 2;
-	const int kDoubleSolenoidReverse = 3;
+	const int kSolenoidButton = 3;
+	const int kDoubleSolenoidForward = 1;
+	const int kDoubleSolenoidReverse = 2;
 	Compressor  *compressor;
 	void autoTargeting()
 	{
@@ -50,6 +52,7 @@ class Robot : public SampleRobot
 		if(areas.size() < 1)
 		{
 			turnRight();
+			printf("areas=%d\n", areas.size());
 		}
 		else
 		{
@@ -57,22 +60,24 @@ class Robot : public SampleRobot
 			{
 				if (areas[i] > max_area) {
 					max_area = areas[i];
-					max_i    = i;
+					max_i = i;
 				}
 			}
 			float s = fabs(centerYs[i] - 240) * 0.003;
-			if(centerXs[i] > 321)
+			if(centerXs[i] > 322)
 			{
-				MLeft1.Set(0.285);
-				MLeft2.Set(0.285);
-				MRight1.Set(-0.285);
-				MRight2.Set(-0.285);
-			} else if(centerXs[i < 319])
+				MLeft1.Set(-0.2);
+				MLeft2.Set(-0.2);
+				MRight1.Set(-0.2);
+				MRight2.Set(-0.2);
+				printf("centerXs=%f\n", centerXs[i]);
+			} else if(centerXs[i] < 318)
 			{
-				MLeft1.Set(-0.285);
-				MLeft2.Set(-0.285);
-				MRight1.Set(0.285);
-				MRight2.Set(0.285);
+				MLeft1.Set(0.2);
+				MLeft2.Set(0.2);
+				MRight1.Set(0.2);
+				MRight2.Set(0.2);
+				printf("centerXs=%f\n", centerXs[i]);
 			} else
 			{
 				MLeft1.Set(0);
@@ -82,13 +87,13 @@ class Robot : public SampleRobot
 			}
 			if(centerYs[i] > 241)
 			{
-				AngleModulator.Set(1);
+				AngleModulator.Set(-0.2-s);
 			}else if(centerYs[i] < 239)
 			{
-				AngleModulator.Set(-0.2 - s);
+				AngleModulator.Set(0.2+s);
 			}else
 			{
-				AngleModulator.Set(0.2 + s);
+				AngleModulator.Set(0);
 			}
 		}
 	}
@@ -212,6 +217,7 @@ class Robot : public SampleRobot
 		MLeft2.Set(0);
 		MRight1.Set(0);
 		MRight2.Set(0);
+		AngleModulator.Set(0);
 	}
 	void timerprocessor()
 	{
@@ -231,13 +237,14 @@ class Robot : public SampleRobot
 public:
 	Robot() :
 		    m_stick(0),
-			MLeft1(0),
-			MLeft2(1),
-			MRight1(2),
-			MRight2(3),// Initialize the Talon on channel 0.
-			ShooterL(4),
+			m_stick1(1),
+			MLeft1(1),
+			MLeft2(2),
+			MRight1(3),
+			MRight2(4),// Initialize the Talon on channel 0.
 			ShooterR(5),
-			AngleModulator(6),
+			ShooterL(6),
+			AngleModulator(7),
 			gyro(0),
 			m_solenoid(0), // Use solenoid on channel 0.
 			// Use double solenoid with Forward Channel of 1 and Reverse of 2.
@@ -247,12 +254,19 @@ public:
 	}
 	void RobotInit()
 		{
-			table = NetworkTable::GetTable("/GRIP/shit");
+			if (fork() == 0)
+			{
+				system("/usr/local/frc/JRE//bin/java -Xmx50m -XX:-OmitStackTraceInFastThrow -XX:+HeapDumpOnOutOfMemoryError -jar '/home/lvuser/grip.jar' '/home/lvuser/project.grip' > /dev/null");
+				return;
+			}
+			printf("shit\n");
+			table = NetworkTable::GetTable("/GRIP/Shit");
 			compressor=new Compressor(0);
 			compressor->SetClosedLoopControl(true);
 			Sol = 0.5;
 			Sor = 0.5;
 			autoDriveMode = false;
+			sos = false;
 			Sob2 = false;
 			Sob4 = false;
 			Sob5 = false;
@@ -316,7 +330,14 @@ public:
 						printf("ManualModeON\n");
 				}
 			}
-
+			if(m_stick.GetRawButton(2))
+			{
+				compressor->SetClosedLoopControl(true);
+			}
+			if(m_stick.GetRawButton(3))
+			{
+				compressor->SetClosedLoopControl(false);
+			}
 			if(autoDriveMode)
 			{
 				speedControl();
@@ -376,12 +397,14 @@ public:
 				{
 					turnRight();
 				}
+				else if(m_stick1.GetRawButton(10))
+				{
+					autoTargeting();
+				}
 				else
 				{
 					allStop();
 				}
-				ShooterL.Set(m_stick.GetThrottle());
-				ShooterR.Set(m_stick.GetThrottle()*-1);
 			}
 			else
 			{
@@ -396,12 +419,15 @@ public:
 					MLeft2.Set(m_stick.GetY()*Sol*-1);
 					MRight1.Set(m_stick.GetThrottle()*Sor);
 					MRight2.Set(m_stick.GetThrottle()*Sor);
-					if (m_stick.GetRawButton(kDoubleSolenoidForward))
+					ShooterL.Set(m_stick1.GetZ());
+					ShooterR.Set(m_stick1.GetZ()*-1);
+					AngleModulator.Set(m_stick1.GetY()*Sol);
+					if (m_stick1.GetRawButton(kDoubleSolenoidForward))
 					{
 						m_doubleSolenoid.Set(DoubleSolenoid::kForward);
 					    //printf("fuck\n");
 					}
-					else if (m_stick.GetRawButton(kDoubleSolenoidReverse))
+					else if (m_stick1.GetRawButton(kDoubleSolenoidReverse))
 					{
 						m_doubleSolenoid.Set(DoubleSolenoid::kReverse);
 						//printf("shit\n");
@@ -411,14 +437,9 @@ public:
 						m_doubleSolenoid.Set(DoubleSolenoid::kOff);
 						Wait(kUpdatePeriod); // Wait 5ms for the next update.
 					}
-					if (m_stick.GetRawButton(3))
-					{
-						autoTargeting();
-					}
 				}
 			}
 		}
 	}
 };
-
-START_ROBOT_CLASS(Robot);
+START_ROBOT_CLASS(Robot)
