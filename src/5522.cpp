@@ -63,21 +63,24 @@ class Robot : public SampleRobot
 					max_i = i;
 				}
 			}
-			float s = fabs(centerYs[i] - 240) * 0.003;
-			if(centerXs[i] > 322)
+			float s = fabs(centerYs[max_i] - 240) * 0.003;
+			printf("max_i=%d", max_i);
+			if(centerXs[max_i] > 322)
 			{
 				MLeft1.Set(-0.2);
 				MLeft2.Set(-0.2);
 				MRight1.Set(-0.2);
 				MRight2.Set(-0.2);
-				printf("centerXs=%f\n", centerXs[i]);
-			} else if(centerXs[i] < 318)
+				//printf("centerXs=%f\n", centerXs[max_i]);
+				//printf("TurnRight\n");
+			} else if(centerXs[max_i] < 318)
 			{
 				MLeft1.Set(0.2);
 				MLeft2.Set(0.2);
 				MRight1.Set(0.2);
 				MRight2.Set(0.2);
-				printf("centerXs=%f\n", centerXs[i]);
+				//printf("centerXs=%f\n", centerXs[max_i]);
+				//printf("TurnLeft\n");
 			} else
 			{
 				MLeft1.Set(0);
@@ -85,12 +88,14 @@ class Robot : public SampleRobot
 				MRight1.Set(0);
 				MRight2.Set(0);
 			}
-			if(centerYs[i] > 241)
+			if(centerYs[max_i] > 241)
 			{
 				AngleModulator.Set(-0.2-s);
-			}else if(centerYs[i] < 239)
+				printf("MakeitDown s=%f\n", s);
+			}else if(centerYs[max_i] < 239)
 			{
 				AngleModulator.Set(0.2+s);
+				printf("MakeitUp s=%f\n", s);
 			}else
 			{
 				AngleModulator.Set(0);
@@ -256,8 +261,11 @@ public:
 		{
 			if (fork() == 0)
 			{
-				system("/usr/local/frc/JRE//bin/java -Xmx50m -XX:-OmitStackTraceInFastThrow -XX:+HeapDumpOnOutOfMemoryError -jar '/home/lvuser/grip.jar' '/home/lvuser/project.grip' > /dev/null");
+				system("/bin/sh /home/lvuser/start-grip.sh");
 				return;
+				// #/bin/sh
+				// ps | grep grip | grep -v grep | awk '{print $1}' | xargs kill
+				// /usr/local/frc/JRE//bin/java -Xmx50m -XX:-OmitStackTraceInFastThrow -XX:+HeapDumpOnOutOfMemoryError -jar '/home/lvuser/grip.jar' '/home/lvuser/project.grip' > /dev/null
 			}
 			printf("shit\n");
 			table = NetworkTable::GetTable("/GRIP/Shit");
