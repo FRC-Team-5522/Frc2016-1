@@ -14,14 +14,22 @@ class Robot : public SampleRobot
 	DigitalInput di;
 	float Sol;
 	float Sor;
-	bool Sob12;
 	bool Sob2;
 	bool Sob4;
 	bool Sob5;
 	bool Sob6;
 	bool Sob7;
 	bool Sob8;
-	bool sob11;
+	bool sob9;
+	bool Sob12;
+	bool aSob2;
+	bool aSob4;
+	bool aSob5;
+	bool aSob6;
+	bool aSob7;
+	bool aSob8;
+	bool asob11;
+	bool aSob12;
 	bool sos;
 	int timer1;
 	bool autoDriveMode;
@@ -37,9 +45,9 @@ class Robot : public SampleRobot
 	Solenoid m_solenoid;
 	DoubleSolenoid m_doubleSolenoid;
 	const double kUpdatePeriod = 0.005;
-	const int kSolenoidButton = 3;
-	const int kDoubleSolenoidForward = 1;
-	const int kDoubleSolenoidReverse = 2;
+	const int kSolenoidButton = 0;
+	const int kDoubleSolenoidForward = 8;
+	const int kDoubleSolenoidReverse = 6;
 	Compressor  *compressor;
 	void autoTargeting()
 	{
@@ -109,7 +117,7 @@ class Robot : public SampleRobot
 		MRight1.Set(m_stick.GetThrottle()*0.285);
 		MRight2.Set(m_stick.GetThrottle()*0.285);
 	}
-	void speedControl()
+	void speedControlForM1()
 	{
 		if(Sob5 != m_stick.GetRawButton(5))
 		{
@@ -155,6 +163,60 @@ class Robot : public SampleRobot
 				Sol = 0.5;
 				Sor = 0.5;
 				printf("Sol=%f Sor=%f\n",Sol,Sor);
+			}
+		}
+	}
+	void speedControlForM2()
+	{
+		if(aSob5 != m_stick1.GetRawButton(5))
+		{
+			aSob5 = !aSob5;
+			if(aSob5)
+			{
+				Sol = Sol+0.1;
+				printf("Sol=%f Sor=%f\n",Sol,Sor);
+			}
+		}
+		if(aSob6 != m_stick1.GetRawButton(6))
+		{
+			aSob6 = !aSob6;
+			if(aSob6)
+			{
+				Sor = Sor+0.1;
+				printf("Sol=%f Sor=%f\n",Sol,Sor);
+			}
+		}
+		if(aSob7 != m_stick1.GetRawButton(7))
+		{
+			aSob7 = !aSob7;
+			if(aSob7)
+			{
+				Sol = Sol-0.1;
+				printf("Sol=%f Sor=%f\n",Sol,Sor);
+			}
+		}
+		if(aSob8 != m_stick1.GetRawButton(8))
+		{
+			aSob8 = !aSob8;
+			if(aSob8)
+			{
+				Sor = Sor-0.1;
+				printf("Sol=%f Sor=%f\n",Sol,Sor);
+			}
+		}
+		if(aSob12 != m_stick1.GetRawButton(12))
+		{
+			aSob12 = !aSob12;
+			if(aSob12)
+			{
+				if(compressor->SetClosedLoopControl(true))
+				{
+					compressor->SetClosedLoopControl(false);
+				}
+				else
+				{
+					compressor->SetClosedLoopControl(true);
+				}
 			}
 		}
 	}
@@ -270,19 +332,28 @@ public:
 			printf("shit\n");
 			table = NetworkTable::GetTable("/GRIP/Shit");
 			compressor=new Compressor(0);
-			compressor->SetClosedLoopControl(true);
+			compressor->SetClosedLoopControl(false);
 			Sol = 0.5;
 			Sor = 0.5;
 			autoDriveMode = false;
-			sos = false;
 			Sob2 = false;
 			Sob4 = false;
 			Sob5 = false;
 			Sob6 = false;
 			Sob7 = false;
 			Sob8 = false;
-			sob11 = false;
+			sob9 = false;
 			Sob12 = false;
+			sos = false;
+			aSob2 = false;
+			aSob4 = false;
+			aSob5 = false;
+			aSob6 = false;
+			aSob7 = false;
+			aSob8 = false;
+			asob11 = false;
+			aSob12 = false;
+
 			timer1 = -1;
 			gyro.Reset();
 			gettimeofday(&tm_last, NULL);
@@ -328,9 +399,9 @@ public:
 				printf("timer1 timeout\n");
 				timer1 = -1;
 			}
-			if(sob11 != m_stick.GetRawButton(11)) {
-				sob11 = !sob11;
-				if(sob11){
+			if(sob9 != m_stick1.GetRawButton(9)) {
+				sob9 = !sob9;
+				if(sob9){
 					autoDriveMode = !autoDriveMode;
 					if(autoDriveMode)
 						printf("AutoModeON\n");
@@ -338,18 +409,10 @@ public:
 						printf("ManualModeON\n");
 				}
 			}
-			if(m_stick.GetRawButton(2))
-			{
-				compressor->SetClosedLoopControl(true);
-			}
-			if(m_stick.GetRawButton(3))
-			{
-				compressor->SetClosedLoopControl(false);
-			}
 			if(autoDriveMode)
 			{
-				speedControl();
-				if(Sob4 != m_stick.GetRawButton(4))
+				speedControlForM1();
+				if(Sob4 != m_stick1.GetRawButton(4))
 				{
 					Sob4 = !Sob4;
 					if(Sob4)
@@ -357,7 +420,7 @@ public:
 						gyro.Reset();
 					}
 				}
-				if(Sob2 != m_stick.GetRawButton(2))
+				if(Sob2 != m_stick1.GetRawButton(2))
 				{
 					Sob2 = !Sob2;
 					if(Sob2)
@@ -365,7 +428,7 @@ public:
 						gyro.Reset();
 					}
 				}
-				if(m_stick.GetRawButton(4))
+				if(m_stick1.GetRawButton(4))
 				{
 					float angle = gyro.GetAngle();
 					if(angle >= 0.3)
@@ -381,7 +444,7 @@ public:
 						goForward();
 					}
 				}
-				else if(m_stick.GetRawButton(2))
+				else if(m_stick1.GetRawButton(2))
 				{
 					float angle = gyro.GetAngle();
 					if(angle >= 0.3)
@@ -397,11 +460,11 @@ public:
 						goBackward();
 					}
 				}
-				else if(m_stick.GetRawButton(1))
+				else if(m_stick1.GetRawButton(1))
 				{
 					turnLeft();
 				}
-				else if(m_stick.GetRawButton(3))
+				else if(m_stick1.GetRawButton(3))
 				{
 					turnRight();
 				}
@@ -413,38 +476,53 @@ public:
 				{
 					allStop();
 				}
+				if (m_stick1.GetRawButton(6))
+				{
+					sos = di.Get();
+					if(!sos)
+					{
+						AngleModulator.Set(0.5);
+					}
+					else
+					{
+						AngleModulator.Set(0);
+					}
+				}
+				if (m_stick1.GetRawButton(kDoubleSolenoidForward))
+				{
+					m_doubleSolenoid.Set(DoubleSolenoid::kForward);
+				    //printf("fuck\n");
+				}
+				else if (m_stick1.GetRawButton(kDoubleSolenoidReverse))
+				{
+					m_doubleSolenoid.Set(DoubleSolenoid::kReverse);
+					//printf("shit\n");
+				}
+				else
+				{
+					m_doubleSolenoid.Set(DoubleSolenoid::kOff);
+					Wait(kUpdatePeriod); // Wait 5ms for the next update.
+				}
+				ShooterL.Set(m_stick1.GetThrottle());
+				ShooterR.Set(m_stick1.GetThrottle()*-1);
 			}
 			else
 			{
-				if(m_stick.GetRawButton(4))
+				if(m_stick1.GetRawButton(4))
 				{
 					turtleMode();
 				}
 				else
 				{
-					speedControl();
+					speedControlForM1();
+					speedControlForM2();
 					MLeft1.Set(m_stick.GetY()*Sol*-1);
 					MLeft2.Set(m_stick.GetY()*Sol*-1);
 					MRight1.Set(m_stick.GetThrottle()*Sor);
 					MRight2.Set(m_stick.GetThrottle()*Sor);
-					ShooterL.Set(m_stick1.GetZ());
-					ShooterR.Set(m_stick1.GetZ()*-1);
+					ShooterL.Set(m_stick1.GetThrottle());
+					ShooterR.Set(m_stick1.GetThrottle()*-1);
 					AngleModulator.Set(m_stick1.GetY()*Sol);
-					if (m_stick1.GetRawButton(kDoubleSolenoidForward))
-					{
-						m_doubleSolenoid.Set(DoubleSolenoid::kForward);
-					    //printf("fuck\n");
-					}
-					else if (m_stick1.GetRawButton(kDoubleSolenoidReverse))
-					{
-						m_doubleSolenoid.Set(DoubleSolenoid::kReverse);
-						//printf("shit\n");
-					}
-					else
-					{
-						m_doubleSolenoid.Set(DoubleSolenoid::kOff);
-						Wait(kUpdatePeriod); // Wait 5ms for the next update.
-					}
 				}
 			}
 		}
