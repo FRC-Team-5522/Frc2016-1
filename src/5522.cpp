@@ -11,6 +11,7 @@ class Robot : public SampleRobot
 	Joystick m_stick;
 	Joystick m_stick1;
 	AnalogGyro gyro;
+	AnalogInput ultrasonic;
 	DigitalInput di;
 	float Sol;
 	float Sor;
@@ -32,6 +33,8 @@ class Robot : public SampleRobot
 	bool aSob12;
 	bool sos;
 	int timer1;
+	int bigshit;
+	int smallshit;
 	bool autoDriveMode;
 	Talon MLeft1;
 	Talon MLeft2;
@@ -48,7 +51,13 @@ class Robot : public SampleRobot
 	const int kSolenoidButton = 0;
 	const int kDoubleSolenoidForward = 8;
 	const int kDoubleSolenoidReverse = 6;
+	const double valueToCMs = 0.3175;
 	Compressor  *compressor;
+	float conpensating()
+	{
+		float angle = ultrasonic.GetValue() * valueToCMs * 0.02;
+		return angle;
+	}
 	void autoTargeting()
 	{
 		std::vector<double> areas = table->GetNumberArray("area", llvm::ArrayRef<double>());
@@ -95,18 +104,20 @@ class Robot : public SampleRobot
 				MLeft2.Set(0);
 				MRight1.Set(0);
 				MRight2.Set(0);
+				bigshit = 1;
 			}
-			if(centerYs[max_i] > 241)
+			if(centerYs[max_i] > 241 + conpensating())
 			{
 				AngleModulator.Set(-0.2-s);
 				printf("MakeitDown s=%f\n", s);
-			}else if(centerYs[max_i] < 239)
+			}else if(centerYs[max_i] < 239 + conpensating())
 			{
 				AngleModulator.Set(0.2+s);
 				printf("MakeitUp s=%f\n", s);
 			}else
 			{
 				AngleModulator.Set(0);
+				smallshit = 1;
 			}
 		}
 	}
@@ -353,7 +364,8 @@ public:
 			aSob8 = false;
 			asob11 = false;
 			aSob12 = false;
-
+			bigshit = 0;
+			smallshit = 0;
 			timer1 = -1;
 			gyro.Reset();
 			gettimeofday(&tm_last, NULL);
@@ -362,34 +374,53 @@ public:
 		}
     void Autonomous()
     {
-    	int t;
-    	t = 1;
-    	printf("auto\n");
     	if (IsAutonomous() && IsEnabled())
     	{
-    		MLeft1.Set(0.1);
-    		MLeft2.Set(0.1);
-    		MRight1.Set(0.1);
-    		MRight2.Set(0.1);
-    		Wait(10);
-    		MLeft1.Set(0.3);
-    	    MLeft2.Set(0.3);
-    		MRight1.Set(-0.3);
-    		MRight2.Set(-0.3);
-    		Wait(0.5);
-    		MLeft1.Set(0);
-    		MLeft2.Set(0);
-    		MRight1.Set(0);
-    		MRight2.Set(0);
-    		printf("done\n");
-    		m_solenoid.Set(true);
-    		if (t > 0)
+    		gyro.Reset();
+    		if(ultrasonic.GetValue() * valueToCMs() > 200)
     		{
-    			m_doubleSolenoid.Set(DoubleSolenoid::kForward);
-    			printf("done\n");
+    			float angle = gyro.GetAngle();
+    			if(angle >= 0.3)
+    			{
+    				goForwardMML();
+    			}
+    			else if(angle <= -0.3)
+    			{
+    				goForwardMMR();
+    			}
+    			else
+    			{
+    				goForward();
+    			}
+    			gyro.Reset();
+    		}
+    		allStop();
+    		Wait(0.3);
+    		float angle = gyro.GetAngle();
+    		while(angle < 30)
+    		{
+    			turnRight();
+    		}
+    		allStop;
+    		AngleModulator.Set(-0.5);
+    		Wait(1);
+    		allStop();
+    		while(bigshit != 1 && smallshit != 1)
+    		{
+    			autoTargeting();
+    		}
+    		allStop();
+    		ShooterL.Set(0.5);
+    		ShooterR.Set(-0.5);
+    		Wait(1);
+    		ShooterL.Set(1);
+    		ShooterR.Set(-1);
+    		Wait(1.5);
+    		m_solenoid.Set(true);
+    		m_doubleSolenoid.Set(DoubleSolenoid::kForward);
+    		allStop;
     	}
     }
-}
 	void OperatorControl() {
 		printf("teleop\n");
 		while (IsOperatorControl() && IsEnabled()) {
@@ -475,6 +506,8 @@ public:
 				else
 				{
 					allStop();
+					ShooterL.Set(m_stick1.GetThrottle());
+					ShooterR.Set(m_stick1.GetThrottle()*-1);
 				}
 				if (m_stick1.GetRawButton(6))
 				{
@@ -503,8 +536,6 @@ public:
 					m_doubleSolenoid.Set(DoubleSolenoid::kOff);
 					Wait(kUpdatePeriod); // Wait 5ms for the next update.
 				}
-				ShooterL.Set(m_stick1.GetThrottle());
-				ShooterR.Set(m_stick1.GetThrottle()*-1);
 			}
 			else
 			{
